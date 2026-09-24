@@ -4,6 +4,7 @@ from pathlib import Path
 from groq import Groq
 from pydantic import BaseModel
 from pypdf import PdfReader
+import time
 
 load_dotenv()
 my_api_key = os.getenv("GROQ_API_KEY")
@@ -34,8 +35,20 @@ def getStructuredJD(JDInput):
     }
 
     system_prompt = f"""
-    You are senior HR who needs to extract the job information from job description based on the schema and give a json output.
+    You are an expert HR assistant.
+    Your job is to analyze job descriptions and extract structured information from them.
+
+    Return ONLY valid JSON matching this schema:
     {JobDescriptionSchema}
+    
+    IMPORTANT:
+    Do NOT return the schema itself.
+    Do NOT return fields like "properties", "title" or "type".
+    Fill the schema with actual information extracted from the job description.
+
+    If minimum experience is not mentioned, return null.
+    If information for a list is missing, return an empty list.
+    Do not invent information.
     """
 
     message_system = {
@@ -43,10 +56,9 @@ def getStructuredJD(JDInput):
         "content": system_prompt
     }
 
-    text = JDInput
     user_prompt = f"""
-    This is a Job Description. Please extract the job information from this.
-    {text}
+    Analyze the following job description:
+    {JDInput}
     """
 
     message_user = {
@@ -137,8 +149,30 @@ def getStructuredResume():
     }
 
     system_prompt = f"""
-    You are senior HR who needs to extract the resume information from the given resume based on the schema and give a json output.
+    You are an expert resume parser.
+    Extract information from the resume based on its meaning, not only based on exact section headings.
+
+    Different resumes may use different headings.
+    For example:
+    - Experience
+    - Professional Experience
+    - Work History
+    - Employment
+    - Internships
+
+    These may all contain relevant experience.
+
+    Skills may also appear in the skills section, work experience,
+    internships or projects.
+
+    Return ONLY valid JSON matching this schema:
     {ResumeSchema}
+
+    Important rules:
+    1. Do not invent information.
+    2. If a value is not available, return null.
+    4. Include internships inside experiences.
+    5. Extract skills mentioned across the entire resume.
     """
 
     message_system = {
@@ -148,7 +182,7 @@ def getStructuredResume():
 
     text = parsedResume
     user_prompt = f"""
-    This is the Resume. Please extract the resume information from this.
+    Parse the following resume:
     {text}
     """
 
@@ -169,6 +203,7 @@ def getStructuredResume():
 
 def finalScore():
     structuredJD= getStructuredJD(JDInput)
+    time.sleep(2)
     structuredResume = getStructuredResume()
     
     class finalScore(BaseModel):
